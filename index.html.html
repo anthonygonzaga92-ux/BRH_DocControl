@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BRH-DocControl</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Courier New', monospace;
+  background: #0d1117;
+  color: #c9d1d9;
+  min-height: 100vh;
+  padding: 28px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.header { text-align: center; margin-bottom: 6px; }
+.header h1 { font-size: 14px; letter-spacing: .28em; color: #58a6ff; text-transform: uppercase; margin-bottom: 4px; }
+.header p { font-size: 10px; color: #3d444d; letter-spacing: .12em; text-transform: uppercase; }
+.header .dev {
+  font-size: 9px; color: #2a3140; letter-spacing: .08em;
+  margin-top: 10px; margin-bottom: 18px;
+  font-style: italic;
+}
+
+.card { width: 100%; max-width: 1200px; background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 18px; margin-bottom: 14px; }
+.card-title { font-size: 10px; letter-spacing: .18em; color: #3d444d; text-transform: uppercase; margin-bottom: 12px; }
+
+.api-row { display: flex; gap: 8px; }
+.api-row input {
+  flex: 1; background: #0d1117; border: 1px solid #21262d; border-radius: 4px;
+  color: #c9d1d9; padding: 9px 12px; font-family: 'Courier New', monospace; font-size: 12px;
+}
+.api-row input:focus { outline: none; border-color: #58a6ff; }
+.btn-sm {
+  padding: 9px 14px; background: #21262d; color: #8b949e; border: 1px solid #21262d;
+  border-radius: 4px; font-family: 'Courier New', monospace; font-size: 10px;
+  letter-spacing: .12em; cursor: pointer; text-transform: uppercase; white-space: nowrap;
+}
+.btn-sm:hover { border-color: #58a6ff; color: #58a6ff; }
+.key-note { font-size: 10px; color: #3d444d; margin-top: 8px; letter-spacing: .06em; }
+.key-note a { color: #58a6ff; text-decoration: none; }
+
+.drop-zone {
+  border: 1.5px dashed #21262d; border-radius: 6px; padding: 28px 20px;
+  text-align: center; cursor: pointer; position: relative;
+  background: #0d1117; transition: all .2s;
+}
+.drop-zone.drag-over { border-color: #58a6ff; background: #0d1520; }
+.drop-zone.has-files { border-color: #238636; border-style: solid; }
+.drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.drop-icon { font-size: 28px; margin-bottom: 8px; }
+.drop-label { font-size: 12px; color: #484f58; }
+.drop-label span { color: #58a6ff; }
+
+.file-list { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.file-chip {
+  display: flex; justify-content: space-between; align-items: center;
+  background: #161b22; border: 1px solid #21262d; border-radius: 4px;
+  padding: 5px 10px; font-size: 11px;
+}
+.file-chip .fn { color: #58a6ff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-chip .fm { color: #3d444d; white-space: nowrap; margin-left: 8px; }
+.file-chip .fd { cursor: pointer; color: #f85149; margin-left: 8px; }
+
+.btn-main {
+  width: 100%; max-width: 1200px; padding: 13px; background: #238636; color: #fff;
+  border: none; border-radius: 6px; font-family: 'Courier New', monospace;
+  font-size: 12px; letter-spacing: .22em; text-transform: uppercase; font-weight: bold;
+  cursor: pointer; margin-bottom: 12px;
+}
+.btn-main:hover { background: #2ea043; }
+.btn-main:disabled { opacity: .3; cursor: not-allowed; background: #238636; }
+
+.prog-wrap { width: 100%; max-width: 1200px; display: none; margin-bottom: 6px; }
+.prog-track { height: 5px; background: #21262d; border-radius: 3px; overflow: hidden; }
+.prog-bar { height: 100%; background: #58a6ff; border-radius: 3px; width: 0%; transition: width .4s ease; }
+
+.prog-info {
+  width: 100%; max-width: 1200px; display: none;
+  justify-content: space-between; align-items: center;
+  margin-bottom: 12px; font-size: 10px; letter-spacing: .08em;
+}
+.prog-msg { color: #3d444d; }
+.prog-msg.ok { color: #3fb950; }
+.prog-msg.err { color: #f85149; }
+.prog-timer {
+  background: #161b22; border: 1px solid #21262d; border-radius: 4px;
+  padding: 3px 10px; color: #58a6ff; font-size: 11px;
+  letter-spacing: .1em; min-width: 72px; text-align: center;
+}
+
+.toolbar {
+  width: 100%; max-width: 1200px;
+  display: none; gap: 8px; margin-bottom: 14px; align-items: center;
+}
+.filter-wrap {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  background: #161b22; border: 1px solid #21262d; border-radius: 4px;
+  padding: 6px 12px;
+}
+.filter-wrap label { font-size: 10px; color: #3d444d; letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
+.filter-wrap select {
+  flex: 1; background: #0d1117; border: 1px solid #21262d; border-radius: 4px;
+  color: #c9d1d9; padding: 5px 8px; font-family: 'Courier New', monospace; font-size: 11px;
+}
+.filter-wrap select:focus { outline: none; border-color: #58a6ff; }
+
+.btn-csv {
+  padding: 9px 20px; background: #1f6feb33; color: #58a6ff;
+  border: 1px solid #1f6feb; border-radius: 4px;
+  font-family: 'Courier New', monospace; font-size: 10px;
+  letter-spacing: .12em; cursor: pointer; text-transform: uppercase; white-space: nowrap;
+}
+.btn-csv:hover { background: #1f6feb55; }
+.btn-clear {
+  padding: 9px 20px; background: #f8514922; color: #f85149;
+  border: 1px solid #f85149; border-radius: 4px;
+  font-family: 'Courier New', monospace; font-size: 10px;
+  letter-spacing: .12em; cursor: pointer; text-transform: uppercase; white-space: nowrap;
+}
+.btn-clear:hover { background: #f8514944; }
+
+.tbl-outer {
+  width: 100%; max-width: 1200px; overflow-x: auto;
+  border: 1px solid #21262d; border-radius: 8px;
+  display: none; margin-bottom: 20px;
+}
+.data-tbl { border-collapse: collapse; font-size: 11px; width: max-content; min-width: 100%; }
+
+.data-tbl thead th {
+  background: #161b22; color: #8b949e;
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  padding: 10px 16px; white-space: nowrap;
+  border-bottom: 1px solid #21262d; border-right: 1px solid #21262d;
+  font-weight: normal;
+}
+.data-tbl thead th:first-child {
+  position: sticky; left: 0; z-index: 2;
+  background: #161b22; border-right: 1px solid #30363d; min-width: 110px;
+}
+.data-tbl tbody td {
+  padding: 8px 16px;
+  border-bottom: 1px solid #21262d; border-right: 1px solid #21262d;
+  white-space: normal; word-break: break-word;
+  color: #e6edf3; min-width: 140px; max-width: 300px;
+  line-height: 1.5; vertical-align: top;
+}
+.data-tbl tbody td:first-child {
+  position: sticky; left: 0; z-index: 1;
+  background: #0d1117; color: #58a6ff; font-size: 10px;
+  border-right: 1px solid #30363d; min-width: 110px; max-width: 150px;
+  white-space: normal; word-break: break-word; vertical-align: top;
+}
+.data-tbl tbody tr:last-child td { border-bottom: none; }
+.data-tbl tbody tr:hover td { background: #161b22; }
+.data-tbl tbody tr:hover td:first-child { background: #161b22; }
+.data-tbl tbody tr.hidden { display: none; }
+
+.c-load { color: #58a6ff !important; font-style: italic; }
+.c-pend { color: #3d444d !important; }
+.c-err  { color: #f85149 !important; font-style: italic; }
+
+.footer {
+  font-size: 9px; color: #1e2530; letter-spacing: .06em;
+  margin-top: 8px; margin-bottom: 28px; font-style: italic;
+  text-align: center; width: 100%; max-width: 1200px;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>BRH-DocControl</h1>
+  <p>Extractor de Cajetín &nbsp;·&nbsp; Proyecto 500122 &nbsp;·&nbsp; Sullana–Piura</p>
+  <div class="dev">desarrollado por Arq. Anthony Gonzaga Silupu</div>
+</div>
+
+<div class="card">
+  <div class="card-title">🔑 API Key — Anthropic</div>
+  <div class="api-row">
+    <input type="password" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off">
+    <button class="btn-sm" onclick="toggleKey()">Mostrar</button>
+  </div>
+  <div class="key-note">
+    La key no se guarda — solo vive en esta sesión &nbsp;·&nbsp;
+    <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">📁 PDFs a procesar</div>
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".pdf" multiple>
+    <div class="drop-icon">📄</div>
+    <div class="drop-label">Arrastra PDFs aquí o <span>haz clic para seleccionar</span></div>
+  </div>
+  <div class="file-list" id="fileList"></div>
+</div>
+
+<button class="btn-main" id="extractBtn" disabled onclick="runExtraction()">
+  ▶ EXTRAER CAJETINES
+</button>
+
+<div class="prog-wrap" id="progWrap">
+  <div class="prog-track"><div class="prog-bar" id="progBar"></div></div>
+</div>
+<div class="prog-info" id="progInfo">
+  <span class="prog-msg" id="progMsg"></span>
+  <span class="prog-timer" id="progTimer">00:00</span>
+</div>
+
+<div class="toolbar" id="toolbar">
+  <div class="filter-wrap">
+    <label>Especialidad:</label>
+    <select id="filterEsp" onchange="applyFilter()">
+      <option value="">— Todas —</option>
+    </select>
+  </div>
+  <button class="btn-csv" onclick="exportCSV()">💾 Exportar CSV</button>
+  <button class="btn-clear" onclick="clearAll()">🗑 Limpiar</button>
+</div>
+
+<div class="tbl-outer" id="tblOuter">
+  <table class="data-tbl" id="dataTbl"></table>
+</div>
+
+<div class="footer">BRH-DocControl · Gonzaga Arquitectos · v1.0</div>
+
+<script>
+// Columnas visibles en tabla
+const FIELDS = [
+  { key: 'Código del Plano', label: 'Código del Plano' },
+  { key: 'Nombre del Plano', label: 'Nombre del Plano' },
+  { key: 'Especialidad',     label: 'Especialidad' },
+  { key: 'Fecha',            label: 'Fecha de Revisión' },
+  { key: 'Rev',              label: 'Revisión Actual' },
+];
+
+// Campos extraídos pero ocultos en tabla (van al CSV)
+const ALL_KEYS = [
+  'Código del Plano','Nombre del Plano','Especialidad','Uso','Zona','Escala',
+  'Fecha','Rev','Diseño','Dibujo','Revisión','Aprobación','Director del Proyecto'
+];
+
+const PROMPT = `Eres un extractor de metadatos de planos técnicos BRH/ANIN (Benito Roggio e Hijos / Autoridad Nacional de Infraestructura del Perú).
+
+Analiza el cajetín (title block) del plano y extrae estos campos con MÁXIMA PRECISIÓN.
+
+REGLAS CRÍTICAS PARA FECHAS:
+- Cada profesional tiene su propia fecha en la columna FECHA del cajetín
+- Lee CADA DÍGITO individualmente — no copies fechas entre campos
+- El día "03" es distinto de "01" — si ves un 3, escribe 3
+- Diseño y Dibujo pueden tener fecha DIFERENTE a Revisión y Aprobación
+- Nunca copies la fecha de un campo a otro
+
+Campos:
+- Código del Plano: código completo (ej: 500122-BERH001-740-XX-DR-HD-030241)
+- Nombre del Plano: título completo del plano
+- Especialidad (ej: HIDRÁULICA)
+- Uso
+- Zona
+- Escala
+- Fecha: fecha general "INDICADA" del plano (DD/MM/YYYY)
+- Rev: código de revisión (ej: R01)
+- Diseño: nombre del profesional + su fecha exacta (DD/MM/YYYY)
+- Dibujo: nombre del profesional + su fecha exacta (DD/MM/YYYY)
+- Revisión: nombre del profesional + su fecha exacta (DD/MM/YYYY)
+- Aprobación: nombre del profesional + su fecha exacta (DD/MM/YYYY)
+- Director del Proyecto: nombre + su fecha exacta (DD/MM/YYYY)
+
+Responde ÚNICAMENTE JSON válido, sin markdown, sin backticks, sin texto extra. Si un campo no existe usa "—".
+{"Código del Plano":"...","Nombre del Plano":"...","Especialidad":"...","Uso":"...","Zona":"...","Escala":"...","Fecha":"...","Rev":"...","Diseño":"...","Dibujo":"...","Revisión":"...","Aprobación":"...","Director del Proyecto":"..."}`;
+
+let files = [], results = [], timerInterval = null, startTime = null;
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  addFiles([...e.dataTransfer.files].filter(f => f.type === 'application/pdf'));
+});
+fileInput.addEventListener('change', e => { addFiles([...e.target.files]); fileInput.value = ''; });
+
+function addFiles(nf) {
+  const ex = files.map(f => f.name);
+  nf.forEach(f => { if (!ex.includes(f.name)) files.push(f); });
+  renderFiles(); checkReady();
+}
+function renderFiles() {
+  document.getElementById('fileList').innerHTML = files.map((f, i) =>
+    `<div class="file-chip">
+      <span class="fn">📄 ${f.name}</span>
+      <span class="fm">${(f.size/1024).toFixed(0)} KB <span class="fd" onclick="removeFile(${i})">✕</span></span>
+    </div>`).join('');
+  dropZone.classList.toggle('has-files', files.length > 0);
+}
+function removeFile(i) { files.splice(i, 1); renderFiles(); checkReady(); }
+function checkReady() {
+  document.getElementById('extractBtn').disabled =
+    !(document.getElementById('apiKey').value.trim() && files.length > 0);
+}
+document.getElementById('apiKey').addEventListener('input', checkReady);
+function toggleKey() {
+  const el = document.getElementById('apiKey');
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+function startTimer() {
+  startTime = Date.now(); clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    const s = Math.floor((Date.now() - startTime) / 1000);
+    document.getElementById('progTimer').textContent =
+      String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+  }, 1000);
+}
+function stopTimer() { clearInterval(timerInterval); }
+
+function setProgress(pct, msg, type) {
+  document.getElementById('progBar').style.width = pct + '%';
+  const el = document.getElementById('progMsg');
+  el.textContent = msg; el.className = 'prog-msg ' + (type || '');
+}
+
+async function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result.split(',')[1]);
+    r.onerror = () => rej(new Error('Error al leer'));
+    r.readAsDataURL(file);
+  });
+}
+
+function shortName(f) {
+  return f.name.replace(/500122-BERH001-\d+-XX-DR-\w+-/g,'').replace('.pdf','');
+}
+
+function buildTable() {
+  const thead = `<thead><tr><th>Plano</th>${FIELDS.map(f=>`<th>${f.label}</th>`).join('')}</tr></thead>`;
+  const rows = files.map((f, i) =>
+    `<tr id="row_${i}" data-esp="">
+      <td>${shortName(f)}</td>
+      ${FIELDS.map((_,fi)=>`<td id="c_${i}_${fi}" class="c-pend">—</td>`).join('')}
+    </tr>`).join('');
+  document.getElementById('dataTbl').innerHTML = thead + `<tbody>${rows}</tbody>`;
+  document.getElementById('tblOuter').style.display = 'block';
+}
+
+function setRowLoading(i) {
+  FIELDS.forEach((_,fi) => {
+    const c = document.getElementById(`c_${i}_${fi}`);
+    if (c) { c.textContent = '...'; c.className = 'c-load'; }
+  });
+}
+
+function fillRow(i, data, isErr) {
+  FIELDS.forEach((f, fi) => {
+    const c = document.getElementById(`c_${i}_${fi}`);
+    if (!c) return;
+    if (isErr) { c.textContent = 'Error'; c.className = 'c-err'; }
+    else { c.textContent = (data && data[f.key]) ? data[f.key] : '—'; c.className = ''; }
+  });
+  if (!isErr && data && data['Especialidad']) {
+    const row = document.getElementById(`row_${i}`);
+    if (row) row.dataset.esp = data['Especialidad'].trim().toUpperCase();
+    updateFilterOptions();
+  }
+}
+
+function updateFilterOptions() {
+  const sel = document.getElementById('filterEsp');
+  const current = sel.value;
+  const espSet = new Set();
+  results.forEach(r => { if (r && r.ok && r.data['Especialidad']) espSet.add(r.data['Especialidad'].trim().toUpperCase()); });
+  sel.innerHTML = '<option value="">— Todas —</option>' +
+    [...espSet].sort().map(e => `<option value="${e}"${e===current?' selected':''}>${e}</option>`).join('');
+}
+
+function applyFilter() {
+  const val = document.getElementById('filterEsp').value.trim().toUpperCase();
+  document.querySelectorAll('#dataTbl tbody tr').forEach(row => {
+    row.classList.toggle('hidden', !!(val && row.dataset.esp !== val));
+  });
+}
+
+async function runExtraction() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey || !files.length) return;
+
+  document.getElementById('extractBtn').disabled = true;
+  document.getElementById('toolbar').style.display = 'none';
+  document.getElementById('progWrap').style.display = 'block';
+  document.getElementById('progInfo').style.display = 'flex';
+  results = new Array(files.length).fill(null);
+
+  buildTable();
+  startTimer();
+  setProgress(0, `0 / ${files.length} procesados`, '');
+
+  for (let i = 0; i < files.length; i++) {
+    setRowLoading(i);
+    setProgress(
+      Math.round(i / files.length * 100),
+      `Procesando ${i+1} / ${files.length} — ${files[i].name}`, ''
+    );
+    try {
+      const b64 = await toBase64(files[i]);
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-calls': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
+              { type: 'text', text: PROMPT }
+            ]
+          }]
+        })
+      });
+      const data = await response.json();
+      if (data.error) throw new Error(data.error.message);
+      const raw = data.content?.find(b => b.type === 'text')?.text || '';
+      const parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
+      results[i] = { file: files[i].name, data: parsed, ok: true };
+      fillRow(i, parsed, false);
+    } catch (err) {
+      results[i] = { file: files[i].name, error: err.message, ok: false };
+      fillRow(i, null, true);
+      console.error(files[i].name, err.message);
+    }
+  }
+
+  stopTimer();
+  const ok = results.filter(r => r && r.ok).length;
+  setProgress(100,
+    `✓ Completado — ${ok} / ${files.length} extraídos`,
+    ok === files.length ? 'ok' : 'err'
+  );
+  document.getElementById('extractBtn').disabled = false;
+  document.getElementById('toolbar').style.display = 'flex';
+  updateFilterOptions();
+}
+
+function exportCSV() {
+  const ok = results.filter(r => r && r.ok);
+  if (!ok.length) { alert('No hay datos para exportar.'); return; }
+  const header = ['Archivo', 'Plano', ...ALL_KEYS].join(';');
+  const rows = ok.map(r => {
+    const plano = shortName({ name: r.file });
+    return [`"${r.file}"`, `"${plano}"`,
+      ...ALL_KEYS.map(k => `"${(r.data[k]||'—').replace(/"/g,'""')}"`)]
+      .join(';');
+  });
+  const csv = '\uFEFF' + [header, ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  a.download = 'BRH_DocControl_Cajetines.csv';
+  a.click();
+}
+
+function clearAll() {
+  files = []; results = [];
+  stopTimer();
+  renderFiles();
+  document.getElementById('dataTbl').innerHTML = '';
+  document.getElementById('tblOuter').style.display = 'none';
+  document.getElementById('toolbar').style.display = 'none';
+  document.getElementById('progWrap').style.display = 'none';
+  document.getElementById('progInfo').style.display = 'none';
+  document.getElementById('progBar').style.width = '0%';
+  document.getElementById('progMsg').textContent = '';
+  document.getElementById('progTimer').textContent = '00:00';
+  document.getElementById('filterEsp').innerHTML = '<option value="">— Todas —</option>';
+  checkReady();
+}
+</script>
+</body>
+</html>
