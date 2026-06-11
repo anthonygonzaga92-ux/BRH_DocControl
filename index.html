@@ -191,11 +191,11 @@ body {
 </div>
 
 <div class="card">
-  <div class="card-title">📁 PDFs a procesar</div>
+  <div class="card-title">📁 Seleccionar Carpeta de Planos</div>
   <div class="drop-zone" id="dropZone">
-    <input type="file" id="fileInput" accept=".pdf" multiple>
-    <div class="drop-icon">📄</div>
-    <div class="drop-label">Arrastra PDFs aquí o <span>haz clic para seleccionar</span></div>
+    <input type="file" id="fileInput" accept=".pdf" multiple webkitdirectory directory>
+    <div class="drop-icon">📁</div>
+    <div class="drop-label">Haz clic aquí para <span>seleccionar tu carpeta local de planos</span></div>
   </div>
   <div class="file-list" id="fileList"></div>
 </div>
@@ -230,67 +230,53 @@ body {
 <div class="footer">BRH-DocControl · Gonzaga Arquitectos · v1.0</div>
 
 <script>
-// Columnas visibles en tabla
+// Los 5 encabezados precisos que te interesan visualizar y exportar
 const FIELDS = [
-  { key: 'Código del Plano', label: 'Código del Plano' },
+  { key: 'Código del Plano', label: 'Código' },
   { key: 'Nombre del Plano', label: 'Nombre del Plano' },
   { key: 'Especialidad',     label: 'Especialidad' },
-  { key: 'Fecha',            label: 'Fecha de Revisión' },
-  { key: 'Rev',              label: 'Revisión Actual' },
+  { key: 'Fecha',            label: 'Fecha' },
+  { key: 'Rev',              label: 'Rev' },
 ];
 
-// Campos extraídos pero ocultos en tabla (van al CSV)
-const ALL_KEYS = [
-  'Código del Plano','Nombre del Plano','Especialidad','Uso','Zona','Escala',
-  'Fecha','Rev','Diseño','Dibujo','Revisión','Aprobación','Director del Proyecto'
-];
+const ALL_KEYS = FIELDS.map(f => f.key);
 
-const PROMPT = `Eres un extractor de metadatos de planos técnicos BRH/ANIN (Benito Roggio e Hijos / Autoridad Nacional de Infraestructura del Perú).
-
+// Prompt enfocado y de alto rendimiento para Claude
+const PROMPT = `Eres un extractor de metadatos de planos técnicos BRH/ANIN.
 Analiza el cajetín (title block) del plano y extrae estos campos con MÁXIMA PRECISIÓN.
 
-REGLAS CRÍTICAS PARA FECHAS:
-- Cada profesional tiene su propia fecha en la columna FECHA del cajetín
-- Lee CADA DÍGITO individualmente — no copies fechas entre campos
-- El día "03" es distinto de "01" — si ves un 3, escribe 3
-- Diseño y Dibujo pueden tener fecha DIFERENTE a Revisión y Aprobación
-- Nunca copies la fecha de un campo a otro
-
-Campos:
-- Código del Plano: código completo (ej: 500122-BERH001-740-XX-DR-HD-030241)
+Campos a extraer:
+- Código del Plano: código completo del plano (ej: 500122-BERH001-740-XX-DR-HD-030241)
 - Nombre del Plano: título completo del plano
-- Especialidad (ej: HIDRÁULICA)
-- Uso
-- Zona
-- Escala
-- Fecha: fecha general "INDICADA" del plano (DD/MM/YYYY)
-- Rev: código de revisión (ej: R01)
-- Diseño: nombre del profesional + su fecha exacta (DD/MM/YYYY)
-- Dibujo: nombre del profesional + su fecha exacta (DD/MM/YYYY)
-- Revisión: nombre del profesional + su fecha exacta (DD/MM/YYYY)
-- Aprobación: nombre del profesional + su fecha exacta (DD/MM/YYYY)
-- Director del Proyecto: nombre + su fecha exacta (DD/MM/YYYY)
+- Especialidad: disciplina del plano (ej: HIDRÁULICA, ESTRUCTURAS, ARQUITECTURA)
+- Fecha: fecha general del plano (DD/MM/YYYY)
+- Rev: código de revisión actual (ej: R01, R02)
 
 Responde ÚNICAMENTE JSON válido, sin markdown, sin backticks, sin texto extra. Si un campo no existe usa "—".
-{"Código del Plano":"...","Nombre del Plano":"...","Especialidad":"...","Uso":"...","Zona":"...","Escala":"...","Fecha":"...","Rev":"...","Diseño":"...","Dibujo":"...","Revisión":"...","Aprobación":"...","Director del Proyecto":"..."}`;
+{"Código del Plano":"...","Nombre del Plano":"...","Especialidad":"...","Fecha":"...","Rev":"..."}`;
 
 let files = [], results = [], timerInterval = null, startTime = null;
 
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
+
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
 dropZone.addEventListener('drop', e => {
   e.preventDefault(); dropZone.classList.remove('drag-over');
-  addFiles([...e.dataTransfer.files].filter(f => f.type === 'application/pdf'));
+  addFiles([...e.dataTransfer.files]);
 });
 fileInput.addEventListener('change', e => { addFiles([...e.target.files]); fileInput.value = ''; });
 
 function addFiles(nf) {
   const ex = files.map(f => f.name);
-  nf.forEach(f => { if (!ex.includes(f.name)) files.push(f); });
+  // Carga masiva filtrando estrictamente solo los archivos con extensión .pdf
+  const pdfOnly = nf.filter(f => f.name.toLowerCase().endsWith('.pdf'));
+  
+  pdfOnly.forEach(f => { if (!ex.includes(f.name)) files.push(f); });
   renderFiles(); checkReady();
 }
+
 function renderFiles() {
   document.getElementById('fileList').innerHTML = files.map((f, i) =>
     `<div class="file-chip">
@@ -299,12 +285,15 @@ function renderFiles() {
     </div>`).join('');
   dropZone.classList.toggle('has-files', files.length > 0);
 }
+
 function removeFile(i) { files.splice(i, 1); renderFiles(); checkReady(); }
+
 function checkReady() {
   document.getElementById('extractBtn').disabled =
     !(document.getElementById('apiKey').value.trim() && files.length > 0);
 }
 document.getElementById('apiKey').addEventListener('input', checkReady);
+
 function toggleKey() {
   const el = document.getElementById('apiKey');
   el.type = el.type === 'password' ? 'text' : 'password';
@@ -335,16 +324,17 @@ async function toBase64(file) {
   });
 }
 
+// Retorna el nombre del archivo sin la extensión .pdf como código de respaldo
 function shortName(f) {
-  return f.name.replace(/500122-BERH001-\d+-XX-DR-\w+-/g,'').replace('.pdf','');
+  return f.name.replace(/\.pdf$/i, '');
 }
 
 function buildTable() {
-  const thead = `<thead><tr><th>Plano</th>${FIELDS.map(f=>`<th>${f.label}</th>`).join('')}</tr></thead>`;
+  const thead = `<thead><tr>${FIELDS.map(f=>`<th>${f.label}</th>`).join('')}</tr></thead>`;
   const rows = files.map((f, i) =>
     `<tr id="row_${i}" data-esp="">
-      <td>${shortName(f)}</td>
-      ${FIELDS.map((_,fi)=>`<td id="c_${i}_${fi}" class="c-pend">—</td>`).join('')}
+      <td id="c_${i}_0" class="c-pend">—</td>
+      ${FIELDS.slice(1).map((_,fi)=>`<td id="c_${i}_${fi+1}" class="c-pend">—</td>`).join('')}
     </tr>`).join('');
   document.getElementById('dataTbl').innerHTML = thead + `<tbody>${rows}</tbody>`;
   document.getElementById('tblOuter').style.display = 'block';
@@ -361,9 +351,20 @@ function fillRow(i, data, isErr) {
   FIELDS.forEach((f, fi) => {
     const c = document.getElementById(`c_${i}_${fi}`);
     if (!c) return;
-    if (isErr) { c.textContent = 'Error'; c.className = 'c-err'; }
-    else { c.textContent = (data && data[f.key]) ? data[f.key] : '—'; c.className = ''; }
+    
+    if (isErr) {
+      c.textContent = 'Error';
+      c.className = 'c-err';
+    } else {
+      if (f.key === 'Código del Plano') {
+        c.textContent = (data && data[f.key] && data[f.key] !== '—') ? data[f.key] : shortName(files[i]);
+      } else {
+        c.textContent = (data && data[f.key]) ? data[f.key] : '—';
+      }
+      c.className = '';
+    }
   });
+  
   if (!isErr && data && data['Especialidad']) {
     const row = document.getElementById(`row_${i}`);
     if (row) row.dataset.esp = data['Especialidad'].trim().toUpperCase();
@@ -401,6 +402,7 @@ async function runExtraction() {
   startTimer();
   setProgress(0, `0 / ${files.length} procesados`, '');
 
+  // Petición directa cruzando libremente gracias a tu extensión CORS de Chrome
   for (let i = 0; i < files.length; i++) {
     setRowLoading(i);
     setProgress(
@@ -418,7 +420,7 @@ async function runExtraction() {
           'anthropic-dangerous-direct-browser-calls': 'true'
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-3-5-sonnet-20241022', // Modelo oficial y vigente asignado
           max_tokens: 1000,
           messages: [{
             role: 'user',
@@ -456,17 +458,27 @@ async function runExtraction() {
 function exportCSV() {
   const ok = results.filter(r => r && r.ok);
   if (!ok.length) { alert('No hay datos para exportar.'); return; }
-  const header = ['Archivo', 'Plano', ...ALL_KEYS].join(';');
+  
+  const header = ['Archivo', ...FIELDS.map(f => f.label)].join(';');
   const rows = ok.map(r => {
-    const plano = shortName({ name: r.file });
-    return [`"${r.file}"`, `"${plano}"`,
-      ...ALL_KEYS.map(k => `"${(r.data[k]||'—').replace(/"/g,'""')}"`)]
-      .join(';');
+    const codigoDetectado = (r.data['Código del Plano'] && r.data['Código del Plano'] !== '—') 
+      ? r.data['Código del Plano'] 
+      : shortName({ name: r.file });
+
+    return [
+      `"${r.file}"`,
+      `"${codigoDetectado.replace(/"/g,'""')}"`,
+      `"${(r.data['Nombre del Plano']||'—').replace(/"/g,'""')}"`,
+      `"${(r.data['Especialidad']||'—').replace(/"/g,'""')}"`,
+      `"${(r.data['Fecha']||'—').replace(/"/g,'""')}"`,
+      `"${(r.data['Rev']||'—').replace(/"/g,'""')}"`
+    ].join(';');
   });
+  
   const csv = '\uFEFF' + [header, ...rows].join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-  a.download = 'BRH_DocControl_Cajetines.csv';
+  a.download = 'BRH_DocControl_Limpio.csv';
   a.click();
 }
 
